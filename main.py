@@ -1,21 +1,20 @@
 import tkinter as tk
 from tkinter import scrolledtext
 import threading
-import os, regex, time
+import os, regex, time, requests
 from penny import Penny
 from modules.tts import TTS
 from modules.recorder import record_audio_chunk
 from modules.manual_recording import ManualRecorder
 from modules.speech_queue import SpeechQueue
 from modules.twitch_bot import launch_twitch_bot_thread
-
+import modules.mic_stream_client
 class PennyDashboard:
     def __init__(self, root):
         self.root = root
         self.root.title("Penny Dashboard")
         self.root.configure(bg="black")
         self.root.geometry("800x600")
-
         self.muted = False
         self.penny = Penny()
         self.tts = TTS()
@@ -35,6 +34,16 @@ class PennyDashboard:
     def setup_ui(self):
         button_frame = tk.Frame(self.root, bg="black")
         button_frame.pack(pady=10)
+
+        self.main_server_status = tk.Label(root, text="Penny Main", bg="gray", fg="white", font=("Arial", 10), width=12)
+        self.main_server_status.place(x=675, y=70)
+
+        self.secondary_server_status = tk.Label(root, text="Penny2 Server", bg="gray", fg="white", font=("Arial", 10), width=12)
+        self.secondary_server_status.place(x=675, y=100)
+        self.update_server_status()
+
+        self.talk_light = tk.Label(root, text="", bg="gray", width=2, height=1)
+        self.talk_light.place(x=700, y=10)
 
         self.start_button = tk.Button(button_frame, text="Start Listening", command=self.start_listening, font=("Consolas", 12), bg="#800080", fg="white")
         self.start_button.grid(row=0, column=0, padx=5)
@@ -123,12 +132,15 @@ class PennyDashboard:
         if not self.listening:
             self.listening = True
             self.status_label.config(text="Status: Listening...")
-            threading.Thread(target=self.listen_loop, daemon=True).start()
+            modules.mic_stream_client.start_streaming()
+            self.set_light_listening()
             self.log("Started listening...")
 
     def stop_listening(self):
         self.listening = False
+        modules.mic_stream_client.stop_streaming()
         self.status_label.config(text="Status: Idle")
+        self.set_light_idle()
         self.log("Stopped listening.")
 
     def restart_penny(self):
@@ -177,9 +189,39 @@ class PennyDashboard:
             if os.path.exists(audio_path):
                 os.remove(audio_path)
 
+    def update_server_status(self):
+        try:
+            main_response = requests.get("http://192.168.0.124:7001/ping", timeout=5)
+            if main_response.status_code == 200:
+                self.main_server_status.config(bg="green")
+            else:
+                self.main_server_status.config(bg="red")
+        except:
+            self.main_server_status.config(bg="red")
 
-# Start it!
+        try:
+            secondary_response = requests.get("http://192.168.0.20:7001/ping", timeout=5)
+            if secondary_response.status_code == 200:
+                self.secondary_server_status.config(bg="green")
+            else:
+                self.secondary_server_status.config(bg="red")
+        except:
+            self.secondary_server_status.config(bg="red")
+
+        # Schedule the next check after 15 seconds
+        self.root.after(15000, self.update_server_status)
+
 if __name__ == "__main__":
     root = tk.Tk()
     dashboard = PennyDashboard(root)
+
+    import modules.mic_stream_client
+    import threading
+
+    def start_mic():
+        modules.mic_stream_client.start_mic_listener(dashboard.speech_queue)
+    mic_thread = threading.Thread(target=start_mic, daemon=True)
+    mic_thread.start()
+
     root.mainloop()
+

@@ -44,7 +44,7 @@ class TwitchBot(commands.Bot):
                 response = requests.post(f"{FASTAPI_URL}/respond_chat", json=payload)
                 if response.status_code == 200:
                     reply = response.json().get("output", "")
-                    speech_queue.add_to_queue(reply)
+                    self.speech_queue.add_to_queue(reply)
                 else:
                     print(f"[TwitchBot] Respond error: {response.status_code}")
             except Exception as e:
@@ -89,7 +89,7 @@ class TwitchBot(commands.Bot):
             response = requests.post(f"{FASTAPI_URL}/shoutout", json=payload)
             if response.status_code == 200:
                 reply = response.json().get("output", "")
-                speech_queue.add_to_queue(reply)
+                self.speech_queue.add_to_queue(reply)
             else:
                 print(f"[TwitchBot] Failed to hit /shoutout: {response.status_code}")
         except Exception as e:
@@ -100,7 +100,7 @@ class TwitchBot(commands.Bot):
             response = requests.post(f"{FASTAPI_URL}/react_event", json=payload)
             if response.status_code == 200:
                 reply = response.json().get("output", "")
-                speech_queue.add_to_queue(reply)
+                self.speech_queue.add_to_queue(reply)
             else:
                 print(f"[TwitchBot] Failed to hit /react_event: {response.status_code}")
         except Exception as e:
