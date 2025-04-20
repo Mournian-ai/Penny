@@ -1,0 +1,8 @@
+requests
+fastapi
+uvicorn
+pydub
+twitchio
+python-dotenv
+sounddevice
+scipy
