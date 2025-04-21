@@ -89,7 +89,6 @@ class ManualRecorder:
 
                     response = self.penny.respond(cleaned)
                     if response:
-                        self.log(f"Penny: {response}")
                         safe_response = self.remove_emojis(response)
                         self.speech_queue.add_to_queue(safe_response)
 

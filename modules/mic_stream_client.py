@@ -64,8 +64,6 @@ async def send_audio():
                             response = requests.post(PENNY_API_URL, json=payload, timeout=10)
                             if response.status_code == 200:
                                 output = response.json().get('output')
-                                print(f"[PENNY REPLY] {output}")
-
                                 if speech_queue:
                                     speech_queue.add_to_queue(output)
                                 else:

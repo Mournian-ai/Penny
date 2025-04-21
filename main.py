@@ -18,7 +18,7 @@ class PennyDashboard:
         self.muted = False
         self.penny = Penny()
         self.tts = TTS()
-        self.speech_queue = SpeechQueue(self.tts)
+        self.speech_queue = SpeechQueue(self.tts, self)
         self.listening = False
 
         self.setup_ui()
@@ -38,7 +38,7 @@ class PennyDashboard:
         self.main_server_status = tk.Label(root, text="Penny Main", bg="gray", fg="white", font=("Arial", 10), width=12)
         self.main_server_status.place(x=675, y=70)
 
-        self.secondary_server_status = tk.Label(root, text="Penny2 Server", bg="gray", fg="white", font=("Arial", 10), width=12)
+        self.secondary_server_status = tk.Label(root, text="Penny 2", bg="gray", fg="white", font=("Arial", 10), width=12)
         self.secondary_server_status.place(x=675, y=100)
         self.update_server_status()
 
@@ -214,10 +214,6 @@ class PennyDashboard:
 if __name__ == "__main__":
     root = tk.Tk()
     dashboard = PennyDashboard(root)
-
-    import modules.mic_stream_client
-    import threading
-
     def start_mic():
         modules.mic_stream_client.start_mic_listener(dashboard.speech_queue)
     mic_thread = threading.Thread(target=start_mic, daemon=True)
