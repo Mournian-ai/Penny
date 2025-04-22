@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, simpledialog
-import chromadb
+import json
 import requests
 
 # Connect to Penny's FastAPI
@@ -31,7 +31,24 @@ class MemoryBrowser(tk.Tk):
         tk.Button(button_frame, text="Exit", command=self.destroy, bg="gray", fg="black", font=("Consolas", 10)).grid(row=0, column=2, padx=5)
 
         self.refresh()
+    def export_jsonl(self):
+        if not self.entries:
+            messagebox.showerror("Error", "No memories loaded to export.")
+            return
 
+        try:
+            with open("penny_memories.jsonl", "w", encoding="utf-8") as f:
+                for entry in self.entries:
+                    item = {
+                        "text": entry['text'],
+                        "category": entry.get('category', 'unknown'),
+                        "source": entry.get('source', 'unknown')
+                    }
+                    f.write(json.dumps(item) + "\n")
+            messagebox.showinfo("Success", "Memories exported to penny_memories.jsonl!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to export memories:\n{e}")
+            
     def refresh(self):
         self.memory_list.delete(0, tk.END)
         try:
