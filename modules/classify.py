@@ -1,6 +1,7 @@
 import pickle
+import difflib, os
 
-MODEL_FILE = "model.pkl"
+MODEL_FILE = os.path.join(os.path.dirname(__file__), "model.pkl")
 
 # Load model and vectorizer
 with open(MODEL_FILE, "rb") as f:
@@ -15,10 +16,12 @@ def classify_intent(text):
 def detect_target(text):
     """Detect if user is addressing Penny or someone else."""
     text = text.strip().lower()
+    words = text.split()
 
     not_penny_keywords = ["chat", "guys", "everyone", "folks", "all", "myriad", "alex", "team", "stream", "yall"]
-    penny_keywords = ["penny", "pennybot", "hey penny", "yo penny", "oi penny"]
+    penny_keywords = ["penny", "pennybot", "hey penny", "yo penny", "oi penny", "pen", "penpen"]
 
+    # Direct match first
     for word in penny_keywords:
         if word in text:
             return "penny"
@@ -27,23 +30,21 @@ def detect_target(text):
         if word in text:
             return "not_penny"
 
+    # Fuzzy match: check each word against both lists
+    for word in words:
+        if difflib.get_close_matches(word, penny_keywords, n=1, cutoff=0.85):
+            return "penny"
+        if difflib.get_close_matches(word, not_penny_keywords, n=1, cutoff=0.85):
+            return "not_penny"
+
     return "unknown"
-
 def decide_action(intent, target):
-    """Decide how Penny should react."""
-    if target == "not_penny":
-        return "🛑 Stay silent (user talking to someone else)"
-
-    if intent == "question":
-        return "🧠 Answer thoughtfully (LLM)"
-    elif intent == "reaction":
-        return "😊 React casually (short reply)"
-    elif intent == "statement":
-        return "🤔 Maybe ignore or random casual comment"
-    elif intent == "chatter":
-        return "🛑 Stay silent (user talking to chat)"
+    if target == "penny":
+        return "🧠 Respond with LLM"
+    elif target == "unknown":
+        return "🧠 Respond with LLM (uncertain target)"
     else:
-        return "❓ Unknown action"
+        return "🛑 Stay silent (user talking to someone else)"
 
 if __name__ == "__main__":
     print("Penny Intent/Target Classifier 🧠")

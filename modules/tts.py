@@ -1,4 +1,4 @@
-import subprocess
+import subprocess, requests
 import sounddevice as sd
 from pydub import AudioSegment
 from modules.audio_modifier import modify_audio
@@ -22,6 +22,7 @@ class TTS:
         self.output_device = self.find_output_device(VAC_OUTPUT_NAME)
         self.volume_db = 4
         self.is_speaking = False
+        self.collab_mode = False
 
     def find_output_device(self, name):
         devices = sd.query_devices()
@@ -44,9 +45,22 @@ class TTS:
         sd.wait()
         self.is_speaking = False
 
+        if self.collab_mode:
+            try:
+                discord_path = wav_path.replace(".wav", "_discord.wav")
+                modified_audio.export(discord_path, format="wav")
+
+                with open(discord_path, "rb") as f:
+                    r = requests.post("http://192.168.0.20:7001/discord", files={"file": f})
+                    print(f"[TTS] Sent to Discord: {r.status_code}")
+
+                os.remove(discord_path)
+
+            except Exception as e:
+                print(f"[TTS] Error sending to Discord: {e}")
+
         if os.path.exists(wav_path):
             os.remove(wav_path)
-
     def generate_wav(self, text):
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
         wav_path = tmp.name

@@ -7,6 +7,7 @@ from twitchio.ext import commands
 import requests
 
 from modules.cooldown_manager import CooldownManager
+from threading import Thread
 
 load_dotenv()
 
@@ -23,16 +24,20 @@ class TwitchBot(commands.Bot):
         self.should_stop = asyncio.Event()
         self.cooldown_manager = CooldownManager()
         self.speech_queue = speech_queue_ref
+        self.active_chatters = set()
+        self.chatter_dump_thread = Thread(target=self._dump_active_chatters, daemon=True)
+        self.chatter_dump_thread.start()
 
     async def event_ready(self):
         print(f"[TwitchBot] Connected as {self.nick}")
 
     async def event_message(self, message):
         if message.echo:
-            return
+            return        
 
         username = message.author.name
         content = message.content
+        self.active_chatters.add(username.lower())
         print(f"[TwitchBot] {username}: {content}")
 
         if "penny" in content.lower():
@@ -105,6 +110,18 @@ class TwitchBot(commands.Bot):
                 print(f"[TwitchBot] Failed to hit /react_event: {response.status_code}")
         except Exception as e:
             print(f"[TwitchBot] Error sending event: {e}")
+    
+    def _dump_active_chatters(self):
+        while True:
+            try:
+                with open("active_chatters.txt", "w") as f:
+                    for name in sorted(self.active_chatters):
+                        if name.lower() != "penny_purple":
+                            f.write(name + "\n")
+            except Exception as e:
+                print(f"[TwitchBot] Error writing chatters list: {e}")
+            time.sleep(30)
+
 
 bot = None
 

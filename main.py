@@ -20,7 +20,7 @@ class PennyDashboard:
         self.tts = TTS()
         self.speech_queue = SpeechQueue(self.tts, self)
         self.listening = False
-
+        self.collab_var = tk.BooleanVar()
         self.setup_ui()
 
         self.manual_recorder = ManualRecorder(
@@ -30,11 +30,36 @@ class PennyDashboard:
             log_func=self.log,
             remove_emojis_func=self.remove_emojis
         )
+    def toggle_collab_mode(self):
+        is_on = self.collab_var.get()
+        self.tts.collab_mode = is_on
+        print(f"[Dashboard] Collab mode {'enabled' if is_on else 'disabled'}")
+
+        try:
+            if is_on:
+                # 🔄 Start the Discord bot on Penny2
+                r = requests.post("http://192.168.0.20:7001/discord_start")
+                print(f"[Dashboard] Discord start response: {r.status_code}")
+            else:
+                # 🔒 Stop the Discord bot
+                r = requests.post("http://192.168.0.20:7001/discord_stop")
+                print(f"[Dashboard] Discord stop response: {r.status_code}")
+        except Exception as e:
+            print(f"[Dashboard] Failed to contact Penny2: {e}")
 
     def setup_ui(self):
         button_frame = tk.Frame(self.root, bg="black")
         button_frame.pack(pady=10)
-
+        self.collab_button = tk.Checkbutton(
+            self.root,
+            text="Collab Mode",
+            variable=self.collab_var,
+            command=self.toggle_collab_mode,
+            bg="black",
+            fg="white",
+            selectcolor="gray"
+        )
+        self.collab_button.pack()
         self.main_server_status = tk.Label(root, text="Penny Main", bg="gray", fg="white", font=("Arial", 10), width=12)
         self.main_server_status.place(x=675, y=70)
 
