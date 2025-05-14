@@ -3,7 +3,7 @@ import sounddevice as sd
 from pydub import AudioSegment
 from modules.audio_modifier import modify_audio
 import tempfile
-import os, regex
+import os, regex, threading
 import numpy as np
 
 PIPER_PATH = "F:\\Penny2\\Piper\\piper\\piper.exe"
@@ -40,27 +40,39 @@ class TTS:
         samples = np.array(modified_audio.get_array_of_samples())
         samples = samples.astype(np.float32) / (2 ** 15)
 
-        self.is_speaking = True
-        sd.play(samples, samplerate=modified_audio.frame_rate, device=self.output_device)
-        sd.wait()
-        self.is_speaking = False
-
+        # Always export Discord version first if collab mode
         if self.collab_mode:
             try:
                 discord_path = wav_path.replace(".wav", "_discord.wav")
                 modified_audio.export(discord_path, format="wav")
-
                 with open(discord_path, "rb") as f:
                     r = requests.post("http://192.168.0.20:7001/discord", files={"file": f})
                     print(f"[TTS] Sent to Discord: {r.status_code}")
-
                 os.remove(discord_path)
-
             except Exception as e:
                 print(f"[TTS] Error sending to Discord: {e}")
 
+        self.is_speaking = True
+
+        try:
+            print(f"[TTS] Playing WAV: {wav_path} | Length: {len(samples)} samples")
+            sd.play(samples, samplerate=modified_audio.frame_rate, device=self.output_device)
+        except Exception as e:
+            print(f"[TTS] Error during playback: {e}")
+
+        # Background wait
+        def wait_and_reset():
+            try:
+                sd.wait()
+            except Exception as e:
+                print(f"[TTS] Error waiting for playback to finish: {e}")
+            self.is_speaking = False
+
+        threading.Thread(target=wait_and_reset, daemon=True).start()
+
         if os.path.exists(wav_path):
             os.remove(wav_path)
+
     def generate_wav(self, text):
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
         wav_path = tmp.name
@@ -72,6 +84,7 @@ class TTS:
                 input=text,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
                 check=True
             )
         except subprocess.CalledProcessError as e:

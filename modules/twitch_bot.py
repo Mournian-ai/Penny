@@ -34,12 +34,10 @@ class TwitchBot(commands.Bot):
     async def event_message(self, message):
         if message.echo:
             return        
-
         username = message.author.name
         content = message.content
         self.active_chatters.add(username.lower())
         print(f"[TwitchBot] {username}: {content}")
-
         if "penny" in content.lower():
             try:
                 payload = {

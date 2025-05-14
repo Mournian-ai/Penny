@@ -1,65 +1,57 @@
 import pickle
-import difflib, os
+import difflib, os, time
+from rapidfuzz import fuzz  # If you're already using this instead of difflib
 
 MODEL_FILE = os.path.join(os.path.dirname(__file__), "model.pkl")
+last_target = None
+last_target_time = 0
+CONTEXT_TIMEOUT = 15  # seconds
+CHATTER_LIST = []
+
+PENNY_NAMES = [
+    "penny", "hey penny", "yo penny", "oi penny", "pennybot", "pen",
+    "penn", "pen pen", "penneth", "pennington"
+]
 
 # Load model and vectorizer
 with open(MODEL_FILE, "rb") as f:
     vectorizer, classifier = pickle.load(f)
 
 def classify_intent(text):
-    """Classify user input into intent."""
     X = vectorizer.transform([text])
-    prediction = classifier.predict(X)[0]
-    return prediction
+    return classifier.predict(X)[0]
 
-def detect_target(text):
-    """Detect if user is addressing Penny or someone else."""
+def detect_target(text: str):
+    global last_target, last_target_time
     text = text.strip().lower()
-    words = text.split()
+    current_time = time.time()
 
-    not_penny_keywords = ["chat", "guys", "everyone", "folks", "all", "myriad", "alex", "team", "stream", "yall"]
-    penny_keywords = ["penny", "pennybot", "hey penny", "yo penny", "oi penny", "pen", "penpen"]
+    # ✅ Direct Penny references
+    if any(name in text for name in PENNY_NAMES):
+        last_target = "penny"
+        last_target_time = current_time
+        return "penny"
 
-    # Direct match first
-    for word in penny_keywords:
-        if word in text:
-            return "penny"
-
-    for word in not_penny_keywords:
-        if word in text:
+    # ✅ Match to known chatters
+    for chatter in CHATTER_LIST:
+        if fuzz.partial_ratio(text, chatter.lower()) > 85:
+            last_target = "not_penny"
+            last_target_time = current_time
             return "not_penny"
 
-    # Fuzzy match: check each word against both lists
-    for word in words:
-        if difflib.get_close_matches(word, penny_keywords, n=1, cutoff=0.85):
-            return "penny"
-        if difflib.get_close_matches(word, not_penny_keywords, n=1, cutoff=0.85):
-            return "not_penny"
+    # ✅ Use recent target context if still fresh
+    if last_target and (current_time - last_target_time < CONTEXT_TIMEOUT):
+        return "penny_context" if last_target == "penny" else "not_penny"
 
     return "unknown"
+
 def decide_action(intent, target):
-    if target == "penny":
+    if target in ("penny", "penny_context"):
         return "🧠 Respond with LLM"
     elif target == "unknown":
-        return "🧠 Respond with LLM (uncertain target)"
+        if intent in ("question", "reaction"):
+            return "🧠 Respond with LLM (uncertain target)"
+        else:
+            return "🛑 Stay silent (uncertain)"
     else:
         return "🛑 Stay silent (user talking to someone else)"
-
-if __name__ == "__main__":
-    print("Penny Intent/Target Classifier 🧠")
-    print("---------------------------------\n")
-    
-    while True:
-        user_input = input("Say something: ").strip()
-        if not user_input:
-            continue
-
-        intent = classify_intent(user_input)
-        target = detect_target(user_input)
-        action = decide_action(intent, target)
-
-        print(f"\n🔎 Intent: {intent}")
-        print(f"🎯 Target: {target}")
-        print(f"🛠 Action: {action}\n")
-        print("-" * 40)

@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import scrolledtext
-import threading
+import threading, subprocess, sys
 import os, regex, time, requests
 from penny import Penny
 from modules.tts import TTS
@@ -9,6 +9,7 @@ from modules.manual_recording import ManualRecorder
 from modules.speech_queue import SpeechQueue
 from modules.twitch_bot import launch_twitch_bot_thread
 import modules.mic_stream_client
+from vtuber_window import launch_vtuber_window
 class PennyDashboard:
     def __init__(self, root):
         self.root = root
@@ -239,10 +240,11 @@ class PennyDashboard:
 if __name__ == "__main__":
     root = tk.Tk()
     dashboard = PennyDashboard(root)
+    launch_vtuber_window(root)
     def start_mic():
         modules.mic_stream_client.start_mic_listener(dashboard.speech_queue)
     mic_thread = threading.Thread(target=start_mic, daemon=True)
     mic_thread.start()
-
+    # subprocess.Popen([sys.executable, "vtuber_window.py"], creationflags=subprocess.CREATE_NEW_CONSOLE)
     root.mainloop()
 
